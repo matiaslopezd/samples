@@ -78,6 +78,10 @@ var xmlhttp;
 
 function initialize() {
   var roomErrors = params.errorMessages;
+
+  // create peerconnection early to start key generation
+  pc = new RTCPeerConnection(null);
+
   if (roomErrors.length > 0) {
     console.log(roomErrors);
     for (var i = 0; i < roomErrors.length; ++i) {
