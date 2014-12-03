@@ -11,6 +11,7 @@
 /* globals addCodecParam, channelReady:true, displayError, displayStatus,
    gatheredIceCandidateTypes, goog, hasLocalStream, iceCandidateType,
    localStream, maybePreferAudioReceiveCodec, maybePreferAudioSendCodec,
+   maybePreferVideoReceiveCodec, maybePreferVideoSendCodec,
    maybeSetAudioReceiveBitRate, maybeSetAudioSendBitRate,
    maybeSetVideoReceiveBitRate, maybeSetVideoSendBitRate,
    maybeSetVideoSendInitialBitRate, mergeConstraints, msgQueue, onRemoteHangup,
@@ -101,6 +102,7 @@ function doAnswer() {
 
 function setLocalAndSendMessage(sessionDescription) {
   sessionDescription.sdp = maybePreferAudioReceiveCodec(sessionDescription.sdp);
+  sessionDescription.sdp = maybePreferVideoReceiveCodec(sessionDescription.sdp);
   sessionDescription.sdp = maybeSetAudioReceiveBitRate(sessionDescription.sdp);
   sessionDescription.sdp = maybeSetVideoReceiveBitRate(sessionDescription.sdp);
   pc.setLocalDescription(sessionDescription,
@@ -122,6 +124,7 @@ function setRemote(message) {
         params.opusMaxPbr);
   }
   message.sdp = maybePreferAudioSendCodec(message.sdp);
+  message.sdp = maybePreferVideoSendCodec(message.sdp);
   message.sdp = maybeSetAudioSendBitRate(message.sdp);
   message.sdp = maybeSetVideoSendBitRate(message.sdp);
   message.sdp = maybeSetVideoSendInitialBitRate(message.sdp);
@@ -180,7 +183,7 @@ function processSignalingMessage(message) {
       sdpMLineIndex: message.label,
       candidate: message.candidate
     });
-    noteIceCandidate('Remote', iceCandidateType(message.candidate));
+    recordIceCandidate('Remote', candidate);
     pc.addIceCandidate(candidate,
         onAddIceCandidateSuccess, onAddIceCandidateError);
   } else if (message.type === 'bye') {
@@ -246,19 +249,16 @@ function onSetSessionDescriptionError(error) {
 
 function onIceCandidate(event) {
   if (event.candidate) {
-    if (params.peerConnectionConfig.iceTransports === 'relay') {
-      // Filter out non relay Candidates, if iceTransports is set to relay.
-      if (event.candidate.candidate.search('relay') === -1) {
-        return;
-      }
+    // Eat undesired candidates.
+    if (filterIceCandidate(event.candidate)) {
+      sendMessage({
+        type: 'candidate',
+        label: event.candidate.sdpMLineIndex,
+        id: event.candidate.sdpMid,
+        candidate: event.candidate.candidate
+      });
+      recordIceCandidate('Local', event.candidate);
     }
-    sendMessage({
-      type: 'candidate',
-      label: event.candidate.sdpMLineIndex,
-      id: event.candidate.sdpMid,
-      candidate: event.candidate.candidate
-    });
-    noteIceCandidate('Local', iceCandidateType(event.candidate.candidate));
   } else {
     trace('End of candidates.');
   }
@@ -285,11 +285,34 @@ function onSignalingStateChanged() {
 function onIceConnectionStateChanged() {
   if (pc) {
     trace('ICE connection state changed to: ' + pc.iceConnectionState);
+    if (pc.iceConnectionState === 'completed') {
+      trace('ICE complete time: ' +
+          (window.performance.now() - startTime).toFixed(0) + 'ms.');
+    }
   }
   updateInfoDiv();
 }
 
-function noteIceCandidate(location, type) {
+// Return false if the candidate should be dropped, true if not.
+function filterIceCandidate(candidateObj) {
+  var candidateStr = candidateObj.candidate;
+
+  // Always eat TCP candidates. Not needed in this context.
+  if (candidateStr.indexOf('tcp') !== -1) {
+    return false;
+  }
+
+  // If we're trying to eat non-relay candidates, do that.
+  if (params.peerConnectionConfig.iceTransports === 'relay' &&
+      iceCandidateType(candidateStr) !== 'relay') {
+    return false;
+  }
+
+  return true;
+}
+
+function recordIceCandidate(location, candidateObj) {
+  var type = iceCandidateType(candidateObj.candidate);
   var types = gatheredIceCandidateTypes[location];
   if (!types[type]) {
     types[type] = 1;
