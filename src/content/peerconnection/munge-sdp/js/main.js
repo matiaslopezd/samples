@@ -48,6 +48,8 @@ var sdpConstraints = {
   }
 };
 
+var restartIce = false;
+
 getSources();
 
 function getSources() {
@@ -137,7 +139,7 @@ function createPeerConnection() {
   if (audioTracks.length > 0) {
     trace('Using audio device: ' + audioTracks[0].label);
   }
-  var servers = null;
+  var servers = {iceServers: [{"username":"bring","credential":"your","url":"turn:own.server"}]};
   localPeerConnection = new RTCPeerConnection(servers);
   trace('Created local peer connection object localPeerConnection');
   localPeerConnection.onicecandidate = iceCallback1;
@@ -169,7 +171,7 @@ function maybeAddLineBreakToEnd(sdp) {
 
 function createOffer() {
   localPeerConnection.createOffer(gotDescription1,
-      onCreateSessionDescriptionError);
+      onCreateSessionDescriptionError, {mandatory: {RestartIce: restartIce}});
 }
 
 function onCreateSessionDescriptionError(error) {
@@ -254,6 +256,7 @@ function gotRemoteStream(e) {
 
 function iceCallback1(event) {
   if (event.candidate) {
+    if (!restartIce && event.candidate.candidate.indexOf('typ relay') === -1) return;
     remotePeerConnection.addIceCandidate(new RTCIceCandidate(event.candidate),
         onAddIceCandidateSuccess, onAddIceCandidateError);
     trace('Local ICE candidate: \n' + event.candidate.candidate);
@@ -262,6 +265,7 @@ function iceCallback1(event) {
 
 function iceCallback2(event) {
   if (event.candidate) {
+    if (!restartIce && event.candidate.candidate.indexOf('typ relay') === -1) return;
     localPeerConnection.addIceCandidate(new RTCIceCandidate(event.candidate),
         onAddIceCandidateSuccess, onAddIceCandidateError);
     trace('Remote ICE candidate: \n ' + event.candidate.candidate);
