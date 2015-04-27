@@ -25,6 +25,7 @@ removeButton.onclick = removeServer;
 
 var begin;
 var pc;
+var cands = [];
 
 function selectServer(event) {
   var option = event.target;
@@ -70,6 +71,7 @@ function start() {
   while (candidateTBody.firstChild) {
     candidateTBody.removeChild(candidateTBody.firstChild);
   }
+  cands = [];
 
   // Read the values from the input boxes.
   var iceServers = [];
@@ -149,13 +151,21 @@ function appendCell(row, val, span) {
   }
   row.appendChild(cell);
 }
-
 function iceCallback(event) {
   var elapsed = ((window.performance.now() - begin) / 1000).toFixed(3);
   var row = document.createElement('tr');
   appendCell(row, elapsed);
   if (event.candidate) {
     var c = parseCandidate(event.candidate.candidate);
+    if (c.type === 'relay') {
+        var idx = cands.indexOf(c.foundation + ':' + c.component);
+        if (idx > -1) {
+            console.log('dropped', c);
+            return;
+        }
+        cands.push(c.foundation + ':' + c.component);
+    }
+
     appendCell(row, c.component);
     appendCell(row, c.type);
     appendCell(row, c.foundation);
