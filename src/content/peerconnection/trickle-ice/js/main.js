@@ -158,12 +158,19 @@ function iceCallback(event) {
   if (event.candidate) {
     var c = parseCandidate(event.candidate.candidate);
     if (c.type === 'relay') {
-        var idx = cands.indexOf(c.foundation + ':' + c.component);
-        if (idx > -1) {
+        // check if we have a candidate with the same foundation and component id
+        // already.
+        //
+        // also check that this candidate has a lower type preference than
+        // the candidate we picked so we dont prefer tcp over udp
+        // this should always be the case but...
+        var old = cands.map(function (cand) { return cand.foundation + ':' + cand.component; });
+        var idx = old.indexOf(c.foundation + ':' + c.component);
+        if (idx > -1 && ((c.priority >> 24) < (cands[idx].priority))) {
             console.log('dropped', c);
             return;
         }
-        cands.push(c.foundation + ':' + c.component);
+        cands.push(c);
     }
 
     appendCell(row, c.component);
