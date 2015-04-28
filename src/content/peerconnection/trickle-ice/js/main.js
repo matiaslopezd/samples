@@ -166,7 +166,8 @@ function iceCallback(event) {
         // this should always be the case but...
         var old = cands.map(function (cand) { return cand.foundation + ':' + cand.component; });
         var idx = old.indexOf(c.foundation + ':' + c.component);
-        if (idx > -1 && ((c.priority >> 24) < (cands[idx].priority >> 24))) {
+        // remember: local type pref 0 is udp, 1 tcp, tls 2. higher == worse
+        if (idx > -1 && ((c.priority >> 24) >= (cands[idx].priority >> 24))) {
             console.log('dropped', c);
             return;
         }
