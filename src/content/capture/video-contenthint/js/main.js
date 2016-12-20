@@ -88,9 +88,13 @@ function establishPC(videoTag, stream) {
 
   pc1.addStream(stream);
   pc1.createOffer(
+    offerOptions
+  ).then(
     function(desc) {
       onCreateOfferSuccess(pc1, pc2, desc);
-    }, onCreateSessionDescriptionError, offerOptions);
+    },
+    onCreateSessionDescriptionError
+  );
 }
 
 function onCreateSessionDescriptionError(error) {
@@ -98,15 +102,23 @@ function onCreateSessionDescriptionError(error) {
 }
 
 function onCreateOfferSuccess(pc1, pc2, desc) {
-  pc1.setLocalDescription(desc, function() {}, onSetSessionDescriptionError);
-  pc2.setRemoteDescription(desc, function() {}, onSetSessionDescriptionError);
+  pc1.setLocalDescription(desc).then(
+    function() {},
+    onSetSessionDescriptionError
+  );
+  pc2.setRemoteDescription(desc).then(
+    function() {},
+    onSetSessionDescriptionError
+  );
   // Since the 'remote' side has no media stream we need
   // to pass in the right constraints in order for it to
   // accept the incoming offer of audio and video.
-  pc2.createAnswer(
+  pc2.createAnswer().then(
     function(answerDesc) {
       onCreateAnswerSuccess(pc1, pc2, answerDesc);
-    }, onCreateSessionDescriptionError);
+    },
+    onCreateSessionDescriptionError
+  );
 }
 
 function onSetSessionDescriptionError(error) {
@@ -121,8 +133,14 @@ function onCreateAnswerSuccess(pc1, pc2, desc) {
   // Hard-code video bitrate to 50kbps.
   desc.sdp = desc.sdp.replace(/a=mid:video\r\n/g,
                               'a=mid:video\r\nb=AS:' + 50 + '\r\n');
-  pc2.setLocalDescription(desc, function() {}, onSetSessionDescriptionError);
-  pc1.setRemoteDescription(desc, function() {}, onSetSessionDescriptionError);
+  pc2.setLocalDescription(desc).then(
+    function() {},
+    onSetSessionDescriptionError
+  );
+  pc1.setRemoteDescription(desc).then(
+    function() {},
+    onSetSessionDescriptionError
+  );
 }
 
 function onIceCandidate(pc, otherPc, event) {
