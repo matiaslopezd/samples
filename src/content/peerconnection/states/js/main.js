@@ -23,8 +23,10 @@ hangupButton.onclick = hangup;
 
 var pc1StateDiv = document.querySelector('div#pc1State');
 var pc1IceStateDiv = document.querySelector('div#pc1IceState');
+var pc1ConnStateDiv = document.querySelector('div#pc1ConnState');
 var pc2StateDiv = document.querySelector('div#pc2State');
 var pc2IceStateDiv = document.querySelector('div#pc2IceState');
+var pc2ConnStateDiv = document.querySelector('div#pc2ConnState');
 
 var localstream;
 var pc1;
@@ -71,7 +73,7 @@ function call() {
 
   pc1 = new RTCPeerConnection(servers);
   trace('Created local peer connection object pc1');
-  pc1StateDiv.textContent = pc1.signalingState || pc1.readyState;
+  pc1StateDiv.textContent = pc1.signalingState;
   pc1.onsignalingstatechange = stateCallback1;
 
   pc1IceStateDiv.textContent = pc1.iceConnectionState;
@@ -79,10 +81,12 @@ function call() {
   pc1.onicecandidate = function(e) {
     onIceCandidate(pc1, e);
   };
+  pc1.onconnectionstatechange = connStateCallback1;
+  pc1ConnectionStateDiv.textContent = pc1.connectionState;
 
   pc2 = new RTCPeerConnection(servers);
   trace('Created remote peer connection object pc2');
-  pc2StateDiv.textContent = pc2.signalingState || pc2.readyState;
+  pc2StateDiv.textContent = pc2.signalingState;
   pc2.onsignalingstatechange = stateCallback2;
 
   pc2IceStateDiv.textContent = pc2.iceConnectionState;
@@ -90,6 +94,8 @@ function call() {
   pc2.onicecandidate = function(e) {
     onIceCandidate(pc2, e);
   };
+  pc2.onconnectionstatechange = connStateCallback2;
+  pc2ConnectionStateDiv.textContent = pc2.connectionState;
   pc2.ontrack = gotRemoteStream;
   localstream.getTracks().forEach(
     function(track) {
@@ -132,8 +138,8 @@ function hangup() {
   trace('Ending call');
   pc1.close();
   pc2.close();
-  pc1StateDiv.textContent += ' => ' + pc1.signalingState || pc1.readyState;
-  pc2StateDiv.textContent += ' => ' + pc2.signalingState || pc2.readyState;
+  pc1StateDiv.textContent += ' => ' + pc1.signalingState;
+  pc2StateDiv.textContent += ' => ' + pc2.signalingState;
   pc1IceStateDiv.textContent += ' => ' + pc1.iceConnectionState;
   pc2IceStateDiv.textContent += ' => ' + pc2.iceConnectionState;
   pc1 = null;
@@ -152,7 +158,7 @@ function gotRemoteStream(e) {
 function stateCallback1() {
   var state;
   if (pc1) {
-    state = pc1.signalingState || pc1.readyState;
+    state = pc1.signalingState;
     trace('pc1 state change callback, state: ' + state);
     pc1StateDiv.textContent += ' => ' + state;
   }
@@ -161,7 +167,7 @@ function stateCallback1() {
 function stateCallback2() {
   var state;
   if (pc2) {
-    state = pc2.signalingState || pc2.readyState;
+    state = pc2.signalingState;
     trace('pc2 state change callback, state: ' + state);
     pc2StateDiv.textContent += ' => ' + state;
   }
@@ -182,6 +188,24 @@ function iceStateCallback2() {
     iceState = pc2.iceConnectionState;
     trace('pc2 ICE connection state change callback, state: ' + iceState);
     pc2IceStateDiv.textContent += ' => ' + iceState;
+  }
+}
+
+function connStateCallback1() {
+  var connectionState;
+  if (pc1) {
+    connectionState = pc1.connectionState;
+    trace('pc1 connection state change callback, state: ' + connectionState);
+    pc1ConnStateDiv.textContent += ' => ' + connectionState;
+  }
+}
+
+function connStateCallback2() {
+  var connectionState;
+  if (pc2) {
+    connectionState = pc2.connectionState;
+    trace('pc2 connection state change callback, state: ' + connectionState);
+    pc2ConnStateDiv.textContent += ' => ' + connectionState;
   }
 }
 
