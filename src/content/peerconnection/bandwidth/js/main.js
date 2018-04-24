@@ -22,6 +22,10 @@ var pc1;
 var pc2;
 var localStream;
 
+// Can be set in the console before making a call to test this keeps
+// within the envelope set by the SDP. In kbps.
+var maxBandwidth = 0;
+
 var bitrateGraph;
 var bitrateSeries;
 
@@ -116,10 +120,16 @@ function gotDescription2(desc) {
   pc2.setLocalDescription(desc).then(
     function() {
       trace('Answer from pc2 \n' + desc.sdp);
-      pc1.setRemoteDescription({
-        type: desc.type,
-        sdp: updateBandwidthRestriction(desc.sdp, '500')
-      }).then(
+      var p;
+      if (maxBandwidth) {
+        p = pc1.setRemoteDescription({
+          type: desc.type,
+          sdp: updateBandwidthRestriction(desc.sdp, maxBandwidth)
+        });
+      } else {
+        p = pc1.setRemoteDescription(desc);
+      }
+      p.then(
         function() {
         },
         onSetSessionDescriptionError
@@ -185,6 +195,26 @@ bandwidthSelector.onchange = function() {
   bandwidthSelector.disabled = true;
   var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
       .value;
+
+  if (adapter.browserDetails.browser === 'chrome' &&
+      'RTCRtpSender' in window &&
+      'setParameters' in window.RTCRtpSender.prototype) {
+    var sender = pc1.getSenders()[0];
+    var parameters = sender.getParameters();
+    if (bandwidth === 'unlimited') {
+      delete parameters.encodings[0].maxBitrate;
+    } else {
+      parameters.encodings[0].maxBitrate = bandwidth * 1000;
+    }
+    sender.setParameters(parameters)
+    .then(function() {
+      bandwidthSelector.disabled = false;
+    })
+    .catch(function(e) {
+      console.error(e);
+    });
+    return;
+  }
   pc1.createOffer()
   .then(function(offer) {
     return pc1.setLocalDescription(offer);
